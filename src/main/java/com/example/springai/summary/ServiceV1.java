@@ -1,12 +1,15 @@
 package com.example.springai.summary;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -88,10 +91,44 @@ public class ServiceV1 {
         return userPromptTemplate.createMessage(Map.of("text",text));
     }
 
-    public String useTool(){
+    public String useTool() throws Exception{
+        String jsonSchema = """
+        {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "explanation": { "type": "string" },
+                            "output": { "type": "string" }
+                        },
+                        "required": ["explanation", "output"],
+                        "additionalProperties": false
+                    }
+                },
+                "final_answer": { "type": "string" }
+            },
+            "required": ["steps", "final_answer"],
+            "additionalProperties": false
+        }
+        """;
         System.out.println(this.chatModel.getDefaultOptions().getModel());
-        String response = ChatClient.create(chatModel)
-                .prompt("현재 시간을 확인하고 10분 후에 알람을 설정해줘")
+        ChatModel gemma = OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().build())
+                .defaultOptions(
+                        OllamaOptions.builder()
+                                .model("qwen3:1.7b-q4_K_M")
+                                .format(new ObjectMapper().readValue(jsonSchema, Map.class))
+                                .temperature(0.9)
+                                .build())
+                .build();
+
+        String response = ChatClient.create(gemma)
+                .prompt("how can I solve 8x + 7 = -23")
+                .advisors(new SimpleLoggerAdvisor())
+
                 .tools(new DateTools())
                 .call()
                 .content();

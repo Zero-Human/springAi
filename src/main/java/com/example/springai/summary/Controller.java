@@ -36,8 +36,8 @@ public class Controller {
 
     }
     @GetMapping("/tools")
-    public String summary(){
-        return serviceV1.useToolForChatModel();
+    public String summary() throws Exception{
+        return serviceV1.useTool();
     }
     @GetMapping("/embedding")
     public Object embedding(){
