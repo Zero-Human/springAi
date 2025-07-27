@@ -22,10 +22,7 @@ import org.springframework.ai.reader.tika.TikaDocumentReader;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -40,7 +37,7 @@ public class Chatbot {
     @PostMapping("/v1/add-file")
     public String addFile(@RequestBody MultipartFile multipartFile){
         // 백터 db에 파일 넣기
-        var docs = new TikaDocumentReader(multipartFile.getResource()).get();
+        List<Document> docs = new TikaDocumentReader(multipartFile.getResource()).get();
         TokenTextSplitter splitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
                 .withMinChunkSizeChars(200)
@@ -48,15 +45,15 @@ public class Chatbot {
                 .withMaxNumChunks(5000)
                 .withKeepSeparator(true)
                 .build();
-        var chunks = splitter.apply(docs);
+        List<Document> chunks = splitter.apply(docs);
         vectorStore.add(chunks);
         return "성공";
     }
 
-    @PostMapping("/v1/add-file2")
-    public String addFile2(@RequestBody String multipartFile){
+    @PostMapping("/v2/add-file")
+    public String addFile2(@RequestBody String text){
         // 백터 db에 파일 넣기
-        var docs = new TikaDocumentReader(multipartFile).get();
+        List<Document> documents = List.of(new Document(text));
         TokenTextSplitter splitter = TokenTextSplitter.builder()
                 .withChunkSize(400)
                 .withMinChunkSizeChars(200)
@@ -64,7 +61,7 @@ public class Chatbot {
                 .withMaxNumChunks(5000)
                 .withKeepSeparator(true)
                 .build();
-        var chunks = splitter.apply(docs);
+        var chunks = splitter.apply(documents);
         vectorStore.add(chunks);
         return "성공";
     }
@@ -102,7 +99,7 @@ public class Chatbot {
                 .build();
 
         ChatModel gemma = OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().build())
+                .ollamaApi(OllamaApi.builder().baseUrl("http://192.168.0.14:11434").build())
                 .defaultOptions(
                         OllamaOptions.builder()
                                 .model("qwen3:4b")
@@ -182,10 +179,10 @@ public class Chatbot {
                 .build();
 
         ChatModel model = OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().build())
+                .ollamaApi(OllamaApi.builder().baseUrl("https://ef8b99cd60f5.ngrok-free.app").build())
                 .defaultOptions(
                         OllamaOptions.builder()
-                                .model("deepseek-r1:1.5b-qwen-distill-q8_0")
+                                .model("qwen3:4b")
                                 .temperature(0.5)
                                 .build())
                 .build();
@@ -195,6 +192,100 @@ public class Chatbot {
 
         return chatClient.prompt(prompt)
                 .advisors(questionAnswerAdvisor,new SimpleLoggerAdvisor())
+                .call()
+                .content();
+    }
+    @GetMapping("/v3/chat-bot/{model2}")
+    public String chatBotV3(@RequestBody String text, @PathVariable String model2){
+
+        Prompt prompt = new Prompt(
+                List.of(
+                        new SystemMessage("당신은 친절하고 신뢰할 수 있는 한국어 QA 챗봇입니다.\n" +
+                                "제공한 정보를 참고하여 알려줘.\n"),
+                        new UserMessage( text )
+                ));
+
+        PromptTemplate customPromptTemplate = PromptTemplate.builder()
+                .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
+                .template("""
+            <query>
+
+            맥락 정보는 아래와 같습니다.
+
+			---------------------
+			<question_answer_context>
+			---------------------
+
+            """)
+                .build();
+        // similarityThreshold()는 유사도
+
+        QuestionAnswerAdvisor questionAnswerAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+                .searchRequest(SearchRequest.builder().topK(5).similarityThreshold(0.3d).build())
+                .promptTemplate(customPromptTemplate)
+                .build();
+
+        ChatModel model = OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl("https://ef8b99cd60f5.ngrok-free.app").build())
+                .defaultOptions(
+                        OllamaOptions.builder()
+                                .model(model2)
+                                .temperature(0.5)
+                                .build())
+                .build();
+
+        ChatClient chatClient = ChatClient.builder(model)
+                .build();
+
+        return chatClient.prompt(prompt)
+                .advisors(questionAnswerAdvisor,new SimpleLoggerAdvisor(10))
+                .call()
+                .content();
+    }
+
+    @GetMapping("/v4/chat-bot/{model2}")
+    public String chatBotV4(@RequestBody String text, @PathVariable String model2){
+
+        Prompt prompt = new Prompt(
+                List.of(
+                        new SystemMessage("당신은 친절하고 신뢰할 수 있는 코딩 어시스턴스 챗봇입니다.\n"),
+                        new UserMessage( text )
+                ));
+
+        PromptTemplate customPromptTemplate = PromptTemplate.builder()
+                .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
+                .template("""
+            <query>
+
+            맥락 정보는 아래와 같습니다.
+
+			---------------------
+			<question_answer_context>
+			---------------------
+
+            """)
+                .build();
+        // similarityThreshold()는 유사도
+
+        QuestionAnswerAdvisor questionAnswerAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+                .searchRequest(SearchRequest.builder().topK(5).similarityThreshold(0.3d).build())
+                .promptTemplate(customPromptTemplate)
+                .build();
+
+        ChatModel model = OllamaChatModel.builder()
+                .ollamaApi(OllamaApi.builder().baseUrl("https://ef8b99cd60f5.ngrok-free.app").build())
+                .defaultOptions(
+                        OllamaOptions.builder()
+                                .model(model2)
+                                .temperature(0.5)
+                                .build())
+                .build();
+
+        ChatClient chatClient = ChatClient.builder(model)
+                .build();
+
+        return chatClient.prompt(prompt)
+                .advisors(new SimpleLoggerAdvisor(10))
                 .call()
                 .content();
     }
