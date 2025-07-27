@@ -99,7 +99,7 @@ public class Chatbot {
                 .build();
 
         ChatModel gemma = OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().baseUrl("http://192.168.0.14:11434").build())
+                .ollamaApi(OllamaApi.builder().baseUrl("").build())
                 .defaultOptions(
                         OllamaOptions.builder()
                                 .model("qwen3:4b")
@@ -179,7 +179,7 @@ public class Chatbot {
                 .build();
 
         ChatModel model = OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().baseUrl("https://ef8b99cd60f5.ngrok-free.app").build())
+                .ollamaApi(OllamaApi.builder().baseUrl("").build())
                 .defaultOptions(
                         OllamaOptions.builder()
                                 .model("qwen3:4b")
@@ -273,7 +273,7 @@ public class Chatbot {
                 .build();
 
         ChatModel model = OllamaChatModel.builder()
-                .ollamaApi(OllamaApi.builder().baseUrl("https://ef8b99cd60f5.ngrok-free.app").build())
+                .ollamaApi(OllamaApi.builder().baseUrl("").build())
                 .defaultOptions(
                         OllamaOptions.builder()
                                 .model(model2)
