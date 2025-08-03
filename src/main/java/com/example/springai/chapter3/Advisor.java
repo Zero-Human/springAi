@@ -2,6 +2,7 @@ package com.example.springai.chapter3;
 
 import lombok.AllArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SafeGuardAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
 import java.util.List;
 
 @AllArgsConstructor
@@ -29,11 +31,12 @@ public class Advisor {
                         new UserMessage( text )
                 ));
         ChatClient chatClient = ChatClient.builder(chatModel)
-                                            .defaultAdvisors(new ReReadingAdvisor())
-                                        .build();
+                .defaultAdvisors(new SimpleLoggerAdvisor(1))
+                .build();
 
         ChatResponse response = chatClient
                 .prompt(prompt)
+                .advisors(new BlockedKeywordAdvisor())
                 .call()
                 .chatResponse();
         return response;

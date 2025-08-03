@@ -11,11 +11,15 @@ import java.util.Map;
 
 public class ReReadingAdvisor implements CallAdvisor, StreamAdvisor {
 
-    private final int order = 10;
+    private int order = 1;
+    public ReReadingAdvisor(){
+    }
+    public ReReadingAdvisor(int order){
+        this.order = order;
+    }
 
     private ChatClientRequest before(ChatClientRequest advisedRequest) {
         // 추론 능력을 향상시키는 다시 읽기(Re-Reading, Re2)라는 기법을 적용(Spring ai에서 예시로 소개함)
-
         // 입력한 사용자 프롬프트를 가져온다.
         String userText = advisedRequest.prompt().getUserMessage().getText();
         // 프롬프트에 추가적인 내용을 적어서 전달
@@ -29,10 +33,8 @@ public class ReReadingAdvisor implements CallAdvisor, StreamAdvisor {
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest chatClientRequest, CallAdvisorChain callAdvisorChain) {
         // 동기식일 경우 사용되는 함수
-        System.out.println(chatClientRequest);
         ChatClientRequest newChatClientRequest = this.before(chatClientRequest);
         ChatClientResponse chatClientResponse =callAdvisorChain.nextCall(newChatClientRequest);
-        System.out.println(newChatClientRequest);
         return chatClientResponse;
     }
 
@@ -51,6 +53,6 @@ public class ReReadingAdvisor implements CallAdvisor, StreamAdvisor {
     @Override
     public int getOrder() {
         // 실행되는 우선 순위
-        return 0;
+        return this.order;
     }
 }

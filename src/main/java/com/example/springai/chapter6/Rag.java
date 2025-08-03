@@ -17,10 +17,7 @@ import org.springframework.ai.ollama.api.OllamaOptions;
 import org.springframework.ai.template.st.StTemplateRenderer;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -30,7 +27,7 @@ public class Rag {
 
     private final ChatModel chatModel;
 
-    private final ChromaVectorStore vectorStore;
+    private final VectorStore vectorStore;
 
 
 
@@ -43,7 +40,7 @@ public class Rag {
     }
 
     @GetMapping("/v1/rag")
-    public String findRag(@RequestBody String text){
+    public String findRag(@RequestParam String text){
 
         PromptTemplate customPromptTemplate = PromptTemplate.builder()
                 .renderer(StTemplateRenderer.builder().startDelimiterToken('<').endDelimiterToken('>').build())
@@ -65,16 +62,17 @@ public class Rag {
 			3. 제공된 맥락 정보도 같이 알려줘
             """)
                 .build();
-        // similarityThreshold()는 유사도
-        // Rag하기 위해 백터DB 셋팅하기
-        QuestionAnswerAdvisor questionAnswerAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
-                .searchRequest(SearchRequest.builder().topK(5).build())
-                .promptTemplate(customPromptTemplate)
-                .build();
-        ChatClient chatClient = ChatClient.builder(chatModel)
-                .defaultAdvisors(questionAnswerAdvisor, new SimpleLoggerAdvisor(),new ReReadingAdvisor())
-                .build();
-        return chatClient.prompt(text)
+        SearchRequest searchRequest =SearchRequest.builder()
+                                                    .similarityThreshold(0.2)
+                                                    .topK(5)
+                                                    .build();
+        QuestionAnswerAdvisor qnaAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
+                                                    .searchRequest(searchRequest)
+                                                    .build();
+        ChatClient chatClient = ChatClient.builder(chatModel).build();
+        return chatClient
+                .prompt(text)
+                .advisors(qnaAdvisor)
                 .call()
                 .content();
     }
